@@ -1,0 +1,28 @@
+select a.userid,a.account,c.userid,c.passport,a.payall,b.code
+
+  from ZX_VIP_LOST0525 a
+
+  join
+  
+   (select userid, code
+    from bitask.t_dw_vip_vipinfo
+   where logtime = trunc£¨sysdate - 2£©
+  
+   ) b
+   on a.userid = b.userid
+   
+   
+  join 
+
+ (select userid, passport,code
+    from bitask.t_dw_vip_vipinfo
+   where logtime = trunc£¨sysdate - 2£©
+   and   game_au = 4
+   ) c
+
+    on b.code = c.code
+   and b.userid != c.userid
+   
+   where c.userid > b.userid
+  
+ 
