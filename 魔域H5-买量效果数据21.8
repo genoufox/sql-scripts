@@ -1,0 +1,108 @@
+/****** Script for SelectTopNRows command from SSMS  ******/
+-- 首日登陆玩家数
+SELECT count(distinct accountname) as game_cnt
+  FROM [work_huchunlai].[dbo].[myH5_FR_Login_202108]
+  where serverid = 28
+  and DATEADD(s,createtime, '1970-01-01 08:00:00')  <'2021-08-06 00:00:00.000'
+  
+  
+
+-- 新增用户次日留存
+select count( a.accountname) as player1 ,
+       count( b.accountname) as player2 ,
+       count( b.accountname)*1.00/ count( a.accountname)
+       
+  from 
+	(SELECT distinct accountname
+	  FROM [work_huchunlai].[dbo].[myH5_FR_Login_202108]
+	  where serverid = 28
+	  and DATEADD(s,createtime, '1970-01-01 08:00:00')  <'2021-08-06 00:00:00.000') a
+  
+ left join
+ 
+(SELECT distinct accountname
+  FROM [work_huchunlai].[dbo].[myH5_FR_Login_202108]
+  where serverid = 28
+  and DATEADD(s,createtime, '1970-01-01 08:00:00')  >='2021-08-06 13:00:00.000' 
+  and DATEADD(s,createtime, '1970-01-01 08:00:00')  <'2021-08-07 13:00:00.000' 
+  
+  union 
+  SELECT distinct accountname
+  FROM [work_huchunlai].[dbo].[myH5_FR_Logout_202108]
+  where serverid = 28
+  and DATEADD(s,createtime, '1970-01-01 08:00:00')  >='2021-08-06 13:00:00.000' 
+  and DATEADD(s,createtime, '1970-01-01 08:00:00')  <'2021-08-07 13:00:00.000'
+  
+  ) b
+  
+ on a.accountname = b.accountname 
+  
+  
+
+--首日新增玩家登录付费数据
+select a.accountname as player1 ,
+       b.accountname as player2 ,
+       c.accountname as payer,
+       c.pay_sum
+       
+  from 
+	(SELECT distinct accountname
+	  FROM [work_huchunlai].[dbo].[myH5_FR_Login_202108]
+	  where serverid = 28
+	  and DATEADD(s,createtime, '1970-01-01 08:00:00')  <'2021-08-06 00:00:00.000') a
+  
+ left join
+(SELECT distinct accountname
+  FROM [work_huchunlai].[dbo].[myH5_FR_Login_202108]
+  where serverid = 28
+  and DATEADD(s,createtime, '1970-01-01 08:00:00')  >='2021-08-06 00:00:00.000' 
+  and DATEADD(s,createtime, '1970-01-01 08:00:00')  <'2021-08-07 00:00:00.000' 
+  
+  union 
+  SELECT distinct accountname
+  FROM [work_huchunlai].[dbo].[myH5_FR_Logout_202108]
+  where serverid = 28
+  and DATEADD(s,createtime, '1970-01-01 08:00:00')  >='2021-08-06 00:00:00.000' 
+  and DATEADD(s,createtime, '1970-01-01 08:00:00')  <'2021-08-07 00:00:00.000'
+  
+  ) b
+  
+ on a.accountname = b.accountname 
+ 
+  left join 
+  
+	 ( SELECT 
+		 accountname 
+		,CAST (DATEADD(s,createtime, '1970-01-01 08:00:00') as DATE) pay_date
+	    ,sum( cast([ChargeNum]as decimal(10,2))) pay_sum
+	  FROM [work_huchunlai].[dbo].[myH5_FR_Charge2_202108]
+	  where serverid = 28
+	  and   DATEADD(s,createtime, '1970-01-01 08:00:00')  <'2021-08-06 00:00:00.000'
+	  group by accountname,CAST (DATEADD(s,createtime, '1970-01-01 08:00:00') as date)
+	  ) c
+	  
+  on a.accountname = c.accountname 
+  
+ 
+ 
+-- 计算玩家N日留存数据
+
+select cast(min_date as DATE) ,datediff(dd,min_date,DATEADD(s,createtime, '1970-01-01 08:00:00'))+1 as 天数,count(distinct accountname) 玩家数
+from 
+(
+	select a.*, b.min_date 
+	from	 
+		 ( select accountname,createtime
+		   from [dbo].[myH5_FR_Login_202108] 
+		where serverid = 28 )a
+	left join 
+		( select [accountname],min( DATEADD (s,createtime, '1970-01-01 08:00:00'))  as min_date
+			  from [dbo].[myH5_FR_Login_202108]
+			  where serverid = 28 
+		--where time <'2021-04-25 00:00:00'
+		group by [accountname]
+		)b
+		on a.accountname =b.accountname
+		) c
+--where time <'2021-04-25 00:00:00'
+group by  cast(min_date as DATE), datediff(dd,min_date,DATEADD(s,createtime, '1970-01-01 08:00:00'))+1
